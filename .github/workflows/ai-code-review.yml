@@ -1,0 +1,60 @@
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Install Dependencies
+        run: pnpm install
+
+      - name: Create Environment File
+        run: |
+          echo "DEEPSEEK_API_KEY=${{ secrets.DEEPSEEK_API_KEY }}" > .env.development
+
+      - name: Start Mastra Dev Server
+        run: |
+          pnpm run dev &
+          # 等待服务器启动
+          for i in {1..30}; do
+            if curl -s http://localhost:4111/api/agents > /dev/null; then
+              echo "✅ Mastra server is ready"
+              break
+            fi
+            echo "⏳ Waiting for Mastra server... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run AI Code Review on Self
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node src/cli.js \
+            ${{ github.workspace }} \
+            ${{ github.event.pull_request.base.sha }} \
+            ${{ github.event.pull_request.head.sha }} \
+            ${{ github.repository_owner }} \
+            ${{ github.event.repository.name }} \
+            ${{ github.event.pull_request.number }}
