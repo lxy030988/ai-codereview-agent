@@ -1,5 +1,12 @@
+/**
+ * GitHub API 服务
+ *
+ * 封装 GitHub API 交互，用于发布和更新 PR 评论
+ */
+
 import { Octokit } from '@octokit/rest'
 
+// GitHub 服务类
 export class GitHubService {
   private octokit: Octokit
 
@@ -8,7 +15,7 @@ export class GitHubService {
   }
 
   /**
-   * Post code review as a comment on PR
+   * 发布代码审查评论到 PR
    */
   async postReviewComment(params: { owner: string; repo: string; prNumber: number; review: string }): Promise<void> {
     const { owner, repo, prNumber, review } = params
@@ -29,7 +36,7 @@ ${review}
   }
 
   /**
-   * Update existing review comment
+   * 更新已有的审查评论
    */
   async updateReviewComment(params: { owner: string; repo: string; commentId: number; review: string }): Promise<void> {
     const { owner, repo, commentId, review } = params
@@ -50,7 +57,7 @@ ${review}
   }
 
   /**
-   * Find existing AI review comment
+   * 查找已存在的 AI 审查评论
    */
   async findExistingComment(params: { owner: string; repo: string; prNumber: number }): Promise<number | null> {
     const { owner, repo, prNumber } = params
@@ -67,7 +74,7 @@ ${review}
   }
 
   /**
-   * Post or update review comment
+   * 发布或更新审查评论（智能合并）
    */
   async postOrUpdateReview(params: { owner: string; repo: string; prNumber: number; review: string }): Promise<void> {
     const { owner, repo, prNumber, review } = params

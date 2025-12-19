@@ -1,6 +1,15 @@
+/**
+ * 代码审查工作流
+ *
+ * 两步流程：
+ * 1. 分析 Git diff
+ * 2. 执行 AI 代码审查
+ */
+
 import { createStep, createWorkflow } from '@mastra/core/workflows'
 import { z } from 'zod'
 
+// 步骤 1: 分析 Git Diff
 const analyzeGitDiff = createStep({
   id: 'analyze-git-diff',
   description: 'Analyzes Git diff to extract code changes',
@@ -26,23 +35,25 @@ const analyzeGitDiff = createStep({
       throw new Error('Input data not found')
     }
 
+    // 动态导入 simple-git
+
     const simpleGit = (await import('simple-git')).default
     const git = simpleGit(inputData.repoPath)
 
-    // Get diff summary
+    // 获取 diff 摘要
     const diffSummary = await git.diffSummary([`${inputData.fromCommit}..${inputData.toCommit}`])
 
-    // Get detailed diff for each file
+    // 获取每个文件的详细 diff
     const files = await Promise.all(
       diffSummary.files.map(async file => {
         const diff = await git.diff([`${inputData.fromCommit}..${inputData.toCommit}`, '--', file.file])
 
-        // Handle binary files - skip them
+        // 跳过二进制文件
         if ('binary' in file && file.binary) {
           return null
         }
 
-        // Determine file status
+        // 确定文件状态
         let status: string
         const insertions = 'insertions' in file ? file.insertions : 0
         const deletions = 'deletions' in file ? file.deletions : 0
@@ -65,7 +76,7 @@ const analyzeGitDiff = createStep({
       })
     )
 
-    // Filter out null values (binary files) and files we don't want to review
+    // 过滤二进制文件和不需要审查的文件
     const skipPatterns = [
       /\.lock$/,
       /package-lock\.json$/,
@@ -89,6 +100,7 @@ const analyzeGitDiff = createStep({
   }
 })
 
+// 步骤 2: 执行代码审查
 const performCodeReview = createStep({
   id: 'perform-code-review',
   description: 'Performs AI-powered code review on the changes',
@@ -112,12 +124,13 @@ const performCodeReview = createStep({
       throw new Error('Input data not found')
     }
 
+    // 获取代码审查 Agent
     const agent = mastra?.getAgent('codeReviewAgent')
     if (!agent) {
       throw new Error('Code review agent not found')
     }
 
-    // Build prompt with all file changes
+    // 构建包含所有文件变更的提示词
     const filesContext = inputData.files
       .map(
         file => `
@@ -146,6 +159,7 @@ Provide a comprehensive code review following the format specified in your instr
       }
     ])
 
+    // 收集流式输出
     let reviewText = ''
     for await (const chunk of response.textStream) {
       process.stdout.write(chunk)
@@ -158,6 +172,7 @@ Provide a comprehensive code review following the format specified in your instr
   }
 })
 
+// 代码审查工作流定义
 export const codeReviewWorkflow = createWorkflow({
   id: 'code-review-workflow',
   inputSchema: z.object({
@@ -169,7 +184,8 @@ export const codeReviewWorkflow = createWorkflow({
     review: z.string()
   })
 })
-  .then(analyzeGitDiff)
-  .then(performCodeReview)
+  .then(analyzeGitDiff) // 步骤 1: 分析 Git diff
+  .then(performCodeReview) // 步骤 2: 执行审查
 
+// 提交工作流配置
 codeReviewWorkflow.commit()
