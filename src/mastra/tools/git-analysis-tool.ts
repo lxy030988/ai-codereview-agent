@@ -1,7 +1,15 @@
+/**
+ * Git 分析工具
+ *
+ * 提取两个 commit 之间的代码变更
+ * 过滤不需要审查的文件
+ */
+
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 import simpleGit from 'simple-git'
 
+// Git 分析工具定义
 export const gitAnalysisTool = createTool({
   id: 'git-analysis',
   description: 'Analyzes Git diff between two commits to extract code changes',
@@ -29,20 +37,20 @@ export const gitAnalysisTool = createTool({
 
     const git = simpleGit(repoPath)
 
-    // Get list of changed files
+    // 获取变更文件列表
     const diffSummary = await git.diffSummary([`${fromCommit}..${toCommit}`])
 
-    // Get detailed diff for each file
+    // 获取每个文件的详细 diff
     const files = await Promise.all(
       diffSummary.files.map(async file => {
         const diff = await git.diff([`${fromCommit}..${toCommit}`, '--', file.file])
 
-        // Handle binary files - skip them
+        // 跳过二进制文件
         if ('binary' in file && file.binary) {
           return null
         }
 
-        // Determine file status
+        // 确定文件状态
         let status: 'added' | 'modified' | 'deleted'
         const insertions = 'insertions' in file ? file.insertions : 0
         const deletions = 'deletions' in file ? file.deletions : 0
@@ -65,7 +73,7 @@ export const gitAnalysisTool = createTool({
       })
     )
 
-    // Filter out null values (binary files) and files we don't want to review
+    // 过滤二进制文件和不需要审查的文件
     const skipPatterns = [
       /\.lock$/,
       /package-lock\.json$/,
