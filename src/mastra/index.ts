@@ -33,6 +33,6 @@ export const mastra = new Mastra({
   },
   bundler: {
     // 构建器外部依赖配置
-    externals: ['supports-color', 'simple-git', '@octokit/rest']
+    externals: ['simple-git']
   }
 })

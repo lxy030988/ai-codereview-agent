@@ -8,7 +8,9 @@
     "build": "mastra build",
     "build:cli": "node --loader ts-node/esm src/cli.js",
     "start": "node src/cli.js",
-    "review": "node src/cli.js"
+    "start:github": "node src/cli-github.js",
+    "review": "node src/cli.js",
+    "review:github": "node src/cli-github.js"
   },
   "keywords": [],
   "author": "",
