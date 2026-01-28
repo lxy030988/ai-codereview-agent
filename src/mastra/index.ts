@@ -9,6 +9,13 @@ import { PinoLogger } from '@mastra/loggers'
 import { LibSQLStore } from '@mastra/libsql'
 import { codeReviewWorkflow } from './workflows/code-review-workflow'
 import { codeReviewAgent } from './agents/code-review-agent'
+import { MastraJwtAuth } from '@mastra/auth'
+
+// const jwtSecret = process.env.JWT_AUTH_SECRET
+
+// if (!jwtSecret) {
+//   throw new Error('JWT_AUTH_SECRET 未配置，无法启动 Mastra 服务器的 JWT 鉴权')
+// }
 
 // Mastra 实例配置
 export const mastra = new Mastra({
@@ -31,8 +38,16 @@ export const mastra = new Mastra({
     // 启用可观测性
     default: { enabled: true }
   },
+  // server: {
+  //   // 启用 JWT 鉴权，保护 /api/* 路由
+  //   experimental_auth: new MastraJwtAuth({
+  //     secret: jwtSecret,
+  //     protected: [/^\/api\//],
+  //     public: [/^\/api\/health/]
+  //   })
+  // },
   bundler: {
     // 构建器外部依赖配置
-    externals: ['simple-git']
+    externals: ['simple-git', 'supports-color']
   }
 })

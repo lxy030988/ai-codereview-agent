@@ -33,6 +33,21 @@ cp .env.example .env.development
 ```env
 DEEPSEEK_API_KEY=sk-your-deepseek-api-key
 GITHUB_TOKEN=ghp_your-github-token  # 可选，用于 GitHub PR 集成
+JWT_AUTH_SECRET=your-jwt-secret     # 必需，用于 Mastra API 的 JWT 鉴权
+# 可选：如果已有签发好的 JWT，可直接填写
+MASTRA_JWT_TOKEN=your-issued-jwt
+```
+
+JWT 鉴权说明：
+
+- Mastra 服务器现在要求携带 Bearer JWT 访问 `/api/*`
+- CLI 会优先使用 `MASTRA_JWT_TOKEN`；如果未提供，将使用 `JWT_AUTH_SECRET` 自动签发一个 1 小时有效的临时 token
+- 如果两者都缺失，CLI 会给出错误提示
+
+本地快速生成一个开发用 JWT（便于和其他客户端共享）：
+
+```bash
+JWT_AUTH_SECRET=change-me node -e "console.log(require('jsonwebtoken').sign({ sub: 'ai-codereview-cli', role: 'cli' }, process.env.JWT_AUTH_SECRET, { expiresIn: '1h', issuer: 'ai-codereview-agent' }))"
 ```
 
 ### 3. 启动 Mastra 服务器

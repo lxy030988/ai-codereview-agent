@@ -14,6 +14,7 @@
  */
 
 import { Octokit } from '@octokit/rest'
+import { requireAuthHeaders } from './auth.js'
 
 // Mastra API 服务地址
 const MASTRA_API_URL = 'http://localhost:4111/api'
@@ -172,7 +173,7 @@ ${review}
  * @param {number} prNumber - PR 编号
  * @returns {Promise<string>} AI 审查结果
  */
-async function executeReview(owner, repo, prNumber) {
+async function executeReview(owner, repo, prNumber, authHeaders) {
   const github = new GitHubService(process.env.GITHUB_TOKEN)
 
   console.log('📥 获取 PR 信息...')
@@ -220,7 +221,8 @@ ${diff}
   const response = await fetch(`${MASTRA_API_URL}/agents/codeReviewAgent/generate`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...authHeaders
     },
     body: JSON.stringify({
       messages: [{ role: 'user', content: prompt }]
@@ -242,11 +244,12 @@ ${diff}
  *
  * @returns {Promise<boolean>} 服务器是否可用
  */
-async function checkMastraServer() {
+async function checkMastraServer(authHeaders) {
   try {
     // 尝试访问 agents 端点来验证服务器状态
     const response = await fetch(`${MASTRA_API_URL}/agents`, {
-      method: 'GET'
+      method: 'GET',
+      headers: authHeaders
     })
     return response.ok
   } catch (error) {
@@ -285,6 +288,8 @@ async function main() {
 环境变量:
   DEEPSEEK_API_KEY - DeepSeek API 密钥（必需）
   GITHUB_TOKEN     - GitHub token（必需，用于访问 PR 和发布评论）
+  JWT_AUTH_SECRET  - JWT 签名密钥（必需，或提供 MASTRA_JWT_TOKEN）
+  MASTRA_JWT_TOKEN - 可选，已有 JWT 时直接使用
 
 前置条件:
   Mastra dev 服务器必须运行在 4111 端口
@@ -306,7 +311,20 @@ async function main() {
 
   // 检查 Mastra 服务器是否运行
   console.log('🔍 检查 Mastra 服务器...')
-  const serverRunning = await checkMastraServer()
+  let authHeaders
+
+  try {
+    authHeaders = requireAuthHeaders()
+  } catch (error) {
+    console.error('\n❌ JWT 鉴权未配置：')
+    console.error(error.message)
+    console.error('\n请设置以下任一环境变量：')
+    console.error('  - MASTRA_JWT_TOKEN: 已签发的 JWT，直接用于请求')
+    console.error('  - JWT_AUTH_SECRET: 供 CLI 本地签发临时 JWT')
+    process.exit(1)
+  }
+
+  const serverRunning = await checkMastraServer(authHeaders)
 
   if (!serverRunning) {
     console.error('\n❌ Mastra 服务器未运行！')
@@ -326,7 +344,7 @@ async function main() {
   try {
     // 执行 AI 审查
     console.log('⏳ 运行 AI 审查中...\n')
-    const review = await executeReview(owner, repo, prNumber)
+    const review = await executeReview(owner, repo, prNumber, authHeaders)
 
     console.log('\n✅ 审查完成!\n')
     console.log(review)
